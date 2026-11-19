@@ -32,7 +32,15 @@ services:
         sync: false                  # pega aquí la URL de Flutter Web (https://....onrender.com)
       - key: APP_TIMEZONE
         value: America/Bogota
-      - key: SMTP_HOST               # opcional: vacío = el código solo sale en los logs
+      - key: SMTP_HOST              
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
         sync: false
 
   - type: web
