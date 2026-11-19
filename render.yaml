@@ -1,0 +1,52 @@
+# Blueprint de Render: PostgreSQL + API FastAPI + Flutter Web (3 servicios independientes).
+# NADA se publica hasta que tú lo conectes en Render (New > Blueprint). Revisa los planes:
+# Render puede cobrar por ellos o vencer la base gratuita; elige el plan que corresponda a tu cuenta.
+databases:
+  - name: study-with-me-db
+    databaseName: study_with_me
+    user: study_with_me
+    plan: free            # cambia a un plan de pago si necesitas que no venza
+
+services:
+  - type: web
+    name: study-with-me-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Aplica las migraciones y arranca el servidor.
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: study-with-me-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true          # Render genera una clave aleatoria; no va en el repositorio
+      - key: CORS_ORIGINS
+        sync: false                  # pega aquí la URL de Flutter Web (https://....onrender.com)
+      - key: APP_TIMEZONE
+        value: America/Bogota
+      - key: SMTP_HOST               # opcional: vacío = el código solo sale en los logs
+        sync: false
+
+  - type: web
+    name: study-with-me-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: ./render-build.sh
+    staticPublishPath: build/web
+    envVars:
+      - key: API_BASE_URL
+        sync: false                  # pega aquí la URL de la API (https://study-with-me-api.onrender.com)
+      - key: FLUTTER_VERSION
+        value: stable
+    routes:
+      - type: rewrite                # rutas de la SPA -> index.html
+        source: /*
+        destination: /index.html

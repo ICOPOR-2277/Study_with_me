@@ -1,0 +1,11 @@
+# Dependencias de producción. Versiones mínimas probadas en diseño; fija las exactas con
+# "pip freeze" tras instalar en tu equipo si quieres reproducibilidad total.
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30
+SQLAlchemy>=2.0.30,<2.1
+psycopg[binary]>=3.2
+alembic>=1.13
+pydantic>=2.7,<3
+PyJWT>=2.8
+python-dotenv>=1.0
+tzdata>=2024.1
