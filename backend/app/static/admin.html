@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Study With Me · Panel administrativo</title>
+<style>
+  :root {
+    --primary: #4B3BEF; --primary-soft: #EAE9FD; --bg: #F5F6FB; --card: #ffffff; --field: #F0F1F8;
+    --text: #1B1B2F; --muted: #6B6D86; --line: #E3E4EF; --danger: #D9402B; --ok: #1F8A48; --warn: #B7791F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --primary: #8E83FF; --primary-soft: #2A2750; --bg: #14141F; --card: #1D1D2C; --field: #262638;
+            --text: #ECECF6; --muted: #A2A3BC; --line: #34344A; --danger: #FF7A66; --ok: #5CD08A; --warn: #E8B45A; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .hidden { display: none !important; }
+  header.top { background: var(--primary); color: #fff; padding: 14px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header.top h1 { font-size: 18px; margin: 0; flex: 1; }
+  header.top button { background: rgba(255,255,255,.18); color: #fff; border: 0; border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: 600; }
+  nav.tabs { display: flex; gap: 6px; padding: 12px 20px 0; flex-wrap: wrap; }
+  nav.tabs button { border: 0; background: transparent; color: var(--muted); padding: 10px 16px; border-radius: 12px 12px 0 0; cursor: pointer; font-weight: 700; font-size: 14px; }
+  nav.tabs button.active { background: var(--card); color: var(--primary); }
+  main { padding: 0 20px 40px; max-width: 1200px; margin: 0 auto; }
+  section.panel { background: var(--card); border-radius: 0 16px 16px 16px; padding: 20px; min-height: 300px; border: 1px solid var(--line); }
+  .login { max-width: 380px; margin: 8vh auto; background: var(--card); padding: 28px; border-radius: 20px; border: 1px solid var(--line); }
+  .login h2 { margin: 0 0 4px; } .login p { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+  label { display: block; font-weight: 700; font-size: 13px; margin: 14px 0 6px; }
+  input, select { width: 100%; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--field); color: var(--text); font-size: 14px; }
+  button.primary { width: 100%; margin-top: 20px; padding: 12px; border: 0; border-radius: 12px; background: var(--primary); color: #fff; font-weight: 700; font-size: 15px; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: default; }
+  .error { color: var(--danger); font-size: 13px; margin-top: 12px; min-height: 18px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .stat { background: var(--field); border-radius: 14px; padding: 14px 16px; }
+  .stat .n { font-size: 26px; font-weight: 800; } .stat .l { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  h3 { margin: 22px 0 10px; font-size: 16px; }
+  .bar { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 13px; }
+  .bar .name { width: 130px; } .bar .track { flex: 1; background: var(--field); border-radius: 8px; height: 14px; overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--primary); border-radius: 8px; } .bar .cnt { width: 30px; text-align: right; font-weight: 700; }
+  .filters { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filters input { flex: 2; min-width: 180px; } .filters select { flex: 1; min-width: 130px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--primary-soft); color: var(--primary); }
+  .badge.ok { background: rgba(31,138,72,.14); color: var(--ok); } .badge.bad { background: rgba(217,64,43,.14); color: var(--danger); }
+  .badge.warn { background: rgba(183,121,31,.16); color: var(--warn); }
+  td button { border: 1px solid var(--line); background: transparent; color: var(--text); padding: 6px 12px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+  td button.danger { color: var(--danger); border-color: var(--danger); }
+  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 12px; font-size: 13px; z-index: 10; }
+</style>
+</head>
+<body>
+
+<div id="login-view" class="login">
+  <h2>Study With Me</h2>
+  <p>Panel administrativo. Entra con una cuenta de administrador.</p>
+  <form id="login-form">
+    <label for="email">Correo</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label for="password">Contraseña</label>
+    <input id="password" type="password" autocomplete="current-password" required>
+    <button class="primary" id="login-btn" type="submit">Entrar</button>
+    <div class="error" id="login-error" role="alert"></div>
+  </form>
+</div>
+
+<div id="app-view" class="hidden">
+  <header class="top">
+    <h1>Study With Me · Panel administrativo</h1>
+    <span id="who"></span>
+    <button id="logout-btn" type="button">Cerrar sesión</button>
+  </header>
+  <nav class="tabs" id="tabs">
+    <button data-tab="stats" class="active">Resumen</button>
+    <button data-tab="users">Usuarios</button>
+    <button data-tab="meetings">Reuniones</button>
+  </nav>
+  <main>
+    <section class="panel" id="tab-stats"></section>
+    <section class="panel hidden" id="tab-users">
+      <div class="filters">
+        <input id="u-q" type="search" placeholder="Buscar por nombre, username o correo">
+        <select id="u-role"><option value="">Todos los roles</option><option value="student">Estudiante</option><option value="monitor">Monitor</option><option value="admin">Admin</option></select>
+        <select id="u-status"><option value="">Todos los estados</option><option value="active">Activos</option><option value="pending">Sin verificar</option><option value="suspended">Suspendidos</option></select>
+      </div>
+      <div class="table-wrap" id="users-table"></div>
+    </section>
+    <section class="panel hidden" id="tab-meetings">
+      <div class="filters">
+        <input id="m-q" type="search" placeholder="Buscar por título, materia o anfitrión">
+        <select id="m-status"><option value="">Todas</option><option value="scheduled">Programadas</option><option value="cancelled">Canceladas</option></select>
+      </div>
+      <div class="table-wrap" id="meetings-table"></div>
+    </section>
+  </main>
+</div>
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script>
+(function () {
+  "use strict";
+  var API = window.PANEL_API || location.origin;
+  var KEY = "swm_admin_token";
+  var token = null;
+  try { token = sessionStorage.getItem(KEY); } catch (e) {}
+
+  var $ = function (id) { return document.getElementById(id); };
+  var money = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+
+  // Crea un elemento; el texto SIEMPRE va como textContent (nunca innerHTML), para evitar XSS.
+  function el(tag, props, children) {
+    var n = document.createElement(tag);
+    Object.keys(props || {}).forEach(function (k) {
+      if (k === "text") n.textContent = props[k]; else if (k === "class") n.className = props[k];
+      else if (k.indexOf("on") === 0) n.addEventListener(k.slice(2), props[k]); else n.setAttribute(k, props[k]);
+    });
+    (children || []).forEach(function (c) { if (c) n.appendChild(c); });
+    return n;
+  }
+  function badge(text, kind) { return el("span", { class: "badge " + (kind || ""), text: text }); }
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.classList.remove("hidden");
+    clearTimeout(toast.timer); toast.timer = setTimeout(function () { t.classList.add("hidden"); }, 3000);
+  }
+  function fmtDate(iso) { var p = String(iso).slice(0, 10).split("-"); return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : iso; }
+
+  function api(path, opts) {
+    opts = opts || {};
+    var headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = "Bearer " + token;
+    return fetch(API + path, { method: opts.method || "GET", headers: headers, body: opts.body ? JSON.stringify(opts.body) : undefined })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (data) {
+          if (r.status === 401 && token) { logout(); throw new Error("La sesión venció. Entra de nuevo."); }
+          if (!r.ok) throw new Error(data.message || "Error " + r.status);
+          return data;
+        });
+      }, function () { throw new Error("No se pudo conectar con el servidor."); });
+  }
+
+  // ---------- sesión ----------
+  function showApp(user) {
+    $("login-view").classList.add("hidden"); $("app-view").classList.remove("hidden");
+    $("who").textContent = user ? user.full_name + " (" + user.email + ")" : "";
+    loadStats();
+  }
+  function logout() {
+    token = null; try { sessionStorage.removeItem(KEY); } catch (e) {}
+    $("app-view").classList.add("hidden"); $("login-view").classList.remove("hidden"); $("password").value = "";
+  }
+  $("login-form").addEventListener("submit", function (ev) {
+    ev.preventDefault(); $("login-error").textContent = ""; $("login-btn").disabled = true;
+    token = null;
+    api("/auth/login", { method: "POST", body: { email: $("email").value.trim(), password: $("password").value } })
+      .then(function (data) {
+        if (!data.user || data.user.role !== "admin") throw new Error("Esta cuenta no es de administrador.");
+        token = data.access_token; try { sessionStorage.setItem(KEY, token); } catch (e) {}
+        showApp(data.user);
+      })
+      .catch(function (e) { token = null; $("login-error").textContent = e.message; })
+      .then(function () { $("login-btn").disabled = false; });
+  });
+  $("logout-btn").addEventListener("click", logout);
+
+  // ---------- pestañas ----------
+  var loaders = { stats: loadStats, users: loadUsers, meetings: loadMeetings };
+  $("tabs").addEventListener("click", function (ev) {
+    var tab = ev.target.getAttribute && ev.target.getAttribute("data-tab"); if (!tab) return;
+    Array.prototype.forEach.call($("tabs").children, function (b) { b.classList.toggle("active", b === ev.target); });
+    ["stats", "users", "meetings"].forEach(function (t) { $("tab-" + t).classList.toggle("hidden", t !== tab); });
+    loaders[tab]();
+  });
+
+  // ---------- resumen ----------
+  function stat(n, label) { return el("div", { class: "stat" }, [el("div", { class: "n", text: String(n) }), el("div", { class: "l", text: label })]); }
+  function loadStats() {
+    api("/admin/stats").then(function (s) {
+      var box = $("tab-stats"); box.textContent = "";
+      box.appendChild(el("div", { class: "cards" }, [
+        stat(s.users_total, "Usuarios"), stat(s.users_students, "Estudiantes"), stat(s.users_monitors, "Monitores"),
+        stat(s.users_admins, "Administradores"), stat(s.users_pending, "Sin verificar correo"), stat(s.users_suspended, "Suspendidos"),
+        stat(s.meetings_total, "Reuniones"), stat(s.meetings_scheduled, "Programadas"), stat(s.meetings_upcoming, "Próximas"),
+        stat(s.meetings_cancelled, "Canceladas"), stat(s.registrations_total, "Inscripciones"),
+        stat(s.payments_total, "Pagos simulados"), stat(money.format(s.payments_amount_cop), "Monto simulado")
+      ]));
+      box.appendChild(el("h3", { text: "Reuniones por materia" }));
+      var max = Math.max.apply(null, [1].concat(s.meetings_by_subject.map(function (x) { return x.count; })));
+      s.meetings_by_subject.forEach(function (x) {
+        var fill = el("div", { class: "fill" }); fill.style.width = (x.count / max * 100) + "%";
+        box.appendChild(el("div", { class: "bar" }, [el("span", { class: "name", text: x.name }), el("div", { class: "track" }, [fill]), el("span", { class: "cnt", text: String(x.count) })]));
+      });
+      box.appendChild(el("p", { class: "empty", text: "Los pagos son simulados: no hay cobros reales." }));
+    }).catch(function (e) { toast(e.message); });
+  }
+
+  // ---------- tablas ----------
+  function table(headers, rows, emptyText) {
+    if (!rows.length) return el("div", { class: "empty", text: emptyText });
+    var head = el("tr", {}, headers.map(function (h) { return el("th", { text: h }); }));
+    return el("table", {}, [el("thead", {}, [head]), el("tbody", {}, rows)]);
+  }
+  function td(content) { return el("td", {}, [typeof content === "string" ? document.createTextNode(content) : content]); }
+
+  function loadUsers() {
+    var qs = new URLSearchParams({ q: $("u-q").value, limit: "200" });
+    if ($("u-role").value) qs.set("role", $("u-role").value);
+    if ($("u-status").value) qs.set("status", $("u-status").value);
+    api("/admin/users?" + qs.toString()).then(function (users) {
+      var roles = { student: "Estudiante", monitor: "Monitor", admin: "Admin" };
+      var rows = users.map(function (u) {
+        var state = !u.verified ? badge("Sin verificar", "warn") : (u.is_active ? badge("Activo", "ok") : badge("Suspendido", "bad"));
+        var action = u.role === "admin" ? document.createTextNode("—") :
+          el("button", { class: u.is_active ? "danger" : "", text: u.is_active ? "Suspender" : "Reactivar", onclick: function () { toggleUser(u); } });
+        return el("tr", {}, [td(u.full_name), td("@" + u.username), td(u.email), td(badge(roles[u.role] || u.role)), td(state),
+          td(String(u.meetings_created)), td(String(u.registrations)), td(fmtDate(u.created_at)), td(action)]);
+      });
+      $("users-table").textContent = "";
+      $("users-table").appendChild(table(["Nombre", "Username", "Correo", "Rol", "Estado", "Reuniones creadas", "Inscripciones", "Registro", ""], rows, "No hay usuarios con esos filtros."));
+    }).catch(function (e) { toast(e.message); });
+  }
+  function toggleUser(u) {
+    var next = !u.is_active;
+    if (!confirm((next ? "¿Reactivar" : "¿Suspender") + " la cuenta de " + u.full_name + "?")) return;
+    api("/admin/users/" + encodeURIComponent(u.id) + "/active", { method: "PUT", body: { is_active: next } })
+      .then(function (r) { toast(r.message); loadUsers(); }).catch(function (e) { toast(e.message); });
+  }
+
+  function loadMeetings() {
+    var qs = new URLSearchParams({ q: $("m-q").value, limit: "200" });
+    if ($("m-status").value) qs.set("status", $("m-status").value);
+    api("/admin/meetings?" + qs.toString()).then(function (ms) {
+      var rows = ms.map(function (m) {
+        var action = m.status === "scheduled" ? el("button", { class: "danger", text: "Cancelar", onclick: function () { cancelMeeting(m); } }) : document.createTextNode("—");
+        return el("tr", {}, [td(m.title), td(m.subject), td(m.host + " (" + m.host_email + ")"), td(fmtDate(m.date) + " " + m.start_time + "–" + m.end_time),
+          td(m.is_virtual ? "Virtual" : "Presencial"), td(m.taken + "/" + m.capacity), td(m.price ? money.format(m.price) : "Gratis"),
+          td(badge(m.status === "scheduled" ? "Programada" : "Cancelada", m.status === "scheduled" ? "ok" : "bad")), td(action)]);
+      });
+      $("meetings-table").textContent = "";
+      $("meetings-table").appendChild(table(["Título", "Materia", "Anfitrión", "Fecha y hora", "Modalidad", "Cupos", "Precio", "Estado", ""], rows, "No hay reuniones con esos filtros."));
+    }).catch(function (e) { toast(e.message); });
+  }
+  function cancelMeeting(m) {
+    if (!confirm("¿Cancelar la reunión \"" + m.title + "\"? Esta acción no se puede deshacer.")) return;
+    api("/admin/meetings/" + encodeURIComponent(m.id) + "/cancel", { method: "POST" })
+      .then(function (r) { toast(r.message); loadMeetings(); }).catch(function (e) { toast(e.message); });
+  }
+
+  function debounce(fn) { var t; return function () { clearTimeout(t); t = setTimeout(fn, 300); }; }
+  $("u-q").addEventListener("input", debounce(loadUsers)); $("u-role").addEventListener("change", loadUsers); $("u-status").addEventListener("change", loadUsers);
+  $("m-q").addEventListener("input", debounce(loadMeetings)); $("m-status").addEventListener("change", loadMeetings);
+
+  // Si ya había una sesión en esta pestaña, se valida con el servidor.
+  if (token) {
+    api("/users/me").then(function (u) { if (u.role !== "admin") throw new Error(); showApp(u); }).catch(function () { logout(); });
+  }
+})();
+</script>
+</body>
+</html>

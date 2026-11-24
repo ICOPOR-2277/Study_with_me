@@ -63,7 +63,7 @@ def clean_db():
 def codes(monkeypatch):
     """Captura los códigos de verificación que normalmente solo salen en el log."""
     sent = {}
-    monkeypatch.setattr(email_service, "send_verification_code", lambda settings, to, code: sent.__setitem__(to, code))
+    monkeypatch.setattr(email_service, "send_verification_code", lambda settings, to, code, purpose="verify": sent.__setitem__(to, code))
     return sent
 
 

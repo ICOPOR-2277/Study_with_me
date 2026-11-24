@@ -45,6 +45,8 @@ def test_password_is_stored_hashed(client, codes):
 
 def test_duplicates_and_validation(client, codes):
     assert reg(client).status_code == 201
+    # solo una cuenta YA verificada bloquea el correo y el username
+    assert client.post("/auth/verify-email", json={"email": "laura@uni.edu", "code": codes["laura@uni.edu"]}).status_code == 200
     assert reg(client, username="otro").status_code == 409
     assert reg(client, email="otro@uni.edu").status_code == 409
     assert reg(client, email="x@uni.edu", username="x1", password="corta").status_code == 422
@@ -102,3 +104,55 @@ def test_pending_username_is_released_for_another_email(client, codes):
     assert reg(client, email="otra@uni.edu").status_code == 201  # mismo username "laura": reemplaza a la pendiente
     r = client.post("/auth/verify-email", json={"email": "otra@uni.edu", "code": codes["otra@uni.edu"]})
     assert r.status_code == 200
+
+
+def test_forgot_and_reset_password(client, codes):
+    assert reg(client).status_code == 201
+    assert client.post("/auth/verify-email", json={"email": "laura@uni.edu", "code": codes["laura@uni.edu"]}).status_code == 200
+    # misma respuesta exista o no la cuenta
+    r1 = client.post("/auth/forgot-password", json={"email": "laura@uni.edu"})
+    r2 = client.post("/auth/forgot-password", json={"email": "nadie@uni.edu"})
+    assert r1.status_code == r2.status_code == 200 and r1.json() == r2.json()
+    assert "nadie@uni.edu" not in codes
+    code = codes["laura@uni.edu"]
+    # código incorrecto, luego correcto
+    bad = "000000" if code != "000000" else "111111"
+    r = client.post("/auth/reset-password", json={"email": "laura@uni.edu", "code": bad, "new_password": "nueva-clave-9"})
+    assert r.status_code == 400 and r.json()["code"] == "invalid_code"
+    r = client.post("/auth/reset-password", json={"email": "laura@uni.edu", "code": code, "new_password": "nueva-clave-9"})
+    assert r.status_code == 200
+    assert client.post("/auth/login", json={"email": "laura@uni.edu", "password": "nueva-clave-9"}).status_code == 200
+    assert client.post("/auth/login", json={"email": "laura@uni.edu", "password": "clave-segura-1"}).status_code == 401
+    # el código ya se usó
+    r = client.post("/auth/reset-password", json={"email": "laura@uni.edu", "code": code, "new_password": "otra-clave-77"})
+    assert r.status_code == 400
+
+
+def test_reset_password_requires_verified_account(client, codes):
+    assert reg(client).status_code == 201  # pendiente: su código es de verificación, no sirve para restablecer
+    r = client.post("/auth/reset-password", json={"email": "laura@uni.edu", "code": codes["laura@uni.edu"], "new_password": "nueva-clave-9"})
+    assert r.status_code == 400 and r.json()["code"] == "invalid_code"
+
+
+def test_edit_profile_and_change_password(make_user):
+    ana, beto = make_user("ana@uni.edu", "ana"), make_user("beto@uni.edu", "beto")
+    r = ana.put("/users/me", {"full_name": "Ana María Gil", "username": "@Ana.Gil"})
+    assert r.status_code == 200 and r.json()["full_name"] == "Ana María Gil" and r.json()["username"] == "ana.gil"
+    assert ana.put("/users/me", {"full_name": "Ana", "username": "beto"}).status_code == 409
+    assert ana.put("/users/me", {"full_name": "Ana", "username": "ana.gil"}).status_code == 200  # el suyo propio
+    r = ana.post("/users/me/password", {"current_password": "mala", "new_password": "nueva-clave-9"})
+    assert r.status_code == 400 and r.json()["code"] == "wrong_password"
+    r = ana.post("/users/me/password", {"current_password": "clave-segura-1", "new_password": "clave-segura-1"})
+    assert r.status_code == 400 and r.json()["code"] == "same_password"
+    assert ana.post("/users/me/password", {"current_password": "clave-segura-1", "new_password": "nueva-clave-9"}).status_code == 200
+    assert beto.client.post("/auth/login", json={"email": "ana@uni.edu", "password": "nueva-clave-9"}).status_code == 200
+
+
+def test_interests_and_availability_roundtrip(make_user):
+    ana = make_user("ana@uni.edu", "ana")
+    r = ana.put("/users/me/interests", {"subjects": ["Cálculo", "Física"]})
+    assert r.status_code == 200 and r.json()["interests"] == ["Cálculo", "Física"]
+    slots = [{"weekday": 0, "start_time": "08:00", "end_time": "10:00"}, {"weekday": 4, "start_time": "14:00", "end_time": "16:30"}]
+    r = ana.put("/users/me/availability", {"slots": slots})
+    assert r.status_code == 200 and r.json()["availability"] == slots
+    assert ana.put("/users/me/availability", {"slots": []}).json()["availability"] == []

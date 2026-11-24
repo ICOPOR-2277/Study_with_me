@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.0 # cliente HTTP para hablar con la API
+  shared_preferences: ^2.2.0 # guarda el token para no pedir login cada vez
 
 dev_dependencies:
   flutter_test:

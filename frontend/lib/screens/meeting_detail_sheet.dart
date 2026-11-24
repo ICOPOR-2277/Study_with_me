@@ -275,6 +275,22 @@ class _MeetingDetailSheet extends StatelessWidget {
                       CreateMeetingScreen(state: state, editing: m)));
             },
           ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton(
+              onPressed: () => _confirmCancel(context, m),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.danger,
+                side: const BorderSide(color: AppColors.danger),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18)),
+              ),
+              child: const Text('Cancelar reunión',
+                  style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ),
           const SizedBox(height: 8),
           const Text('Tú creaste esta reunión',
               style: TextStyle(color: AppColors.textLight, fontSize: 12)),
@@ -299,6 +315,35 @@ class _MeetingDetailSheet extends StatelessWidget {
         );
       },
     );
+  }
+
+  // Pide confirmación y cancela la reunión en el servidor.
+  Future<void> _confirmCancel(BuildContext context, Meeting m) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cancelar la reunión?'),
+        content: Text(
+            '"${m.title}" quedará cancelada para todas las personas inscritas. '
+            'Esta acción no se puede deshacer y los pagos simulados no se reembolsan.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Volver')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Sí, cancelar',
+                  style: TextStyle(color: AppColors.danger))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final error = await state.cancelMeeting(m);
+    messenger.showSnackBar(
+        SnackBar(content: Text(error ?? 'Reunión cancelada')));
+    if (error == null) navigator.pop(); // cierra el panel de detalle
   }
 
   Widget _disabledButton(String text) {

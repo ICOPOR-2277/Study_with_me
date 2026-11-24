@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/app_state.dart';
 import '../models/history_data.dart';
@@ -95,6 +96,52 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  // ---------- Exportar ----------
+
+  // Un valor de CSV entre comillas (las comillas internas se duplican).
+  String _csv(String value) => '"${value.replaceAll('"', '""')}"';
+
+  // Copia al portapapeles lo que se está viendo (la pestaña y los filtros actuales)
+  // como CSV, para pegarlo en Excel o Google Sheets.
+  Future<void> _export() async {
+    final b = StringBuffer();
+    final int rows;
+    if (_showPayments) {
+      b.writeln('fecha,titulo,materia,detalle,monto_cop');
+      for (final p in _payments) {
+        b.writeln([
+          formatApiDate(p.date),
+          _csv(p.title),
+          _csv(p.subject),
+          _csv(p.detail),
+          '${p.amount}',
+        ].join(','));
+      }
+      rows = _payments.length;
+    } else {
+      b.writeln('fecha,titulo,materia,participacion,estado');
+      for (final m in _meetings) {
+        b.writeln([
+          formatApiDate(m.date),
+          _csv(m.title),
+          _csv(m.subject),
+          m.createdByMe ? 'Creada por ti' : 'Asististe',
+          m.cancelled ? 'Cancelada' : 'Realizada',
+        ].join(','));
+      }
+      rows = _meetings.length;
+    }
+    if (rows == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No hay datos para exportar con estos filtros')));
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: b.toString()));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('$rows filas copiadas como CSV. Pégalas en Excel o Sheets.')));
+  }
+
   // ---------- Pantalla ----------
 
   @override
@@ -145,13 +192,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ],
               ),
               GestureDetector(
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(_showPayments
-                        ? 'Pagos exportados (demo)'
-                        : 'Reuniones exportadas (demo)'),
-                  ),
-                ),
+                onTap: _export,
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

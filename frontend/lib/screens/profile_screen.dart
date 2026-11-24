@@ -5,6 +5,8 @@ import '../services/api_client.dart';
 import '../services/app_services.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_widgets.dart';
+import 'edit_profile_screen.dart';
+import 'edit_subjects_screen.dart';
 import 'settings_screen.dart';
 
 // ============================================================
@@ -61,6 +63,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // Abre otra pantalla y, al volver, redibuja (por si cambió nombre o materias).
+  void _open(Widget screen) {
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => screen))
+        .then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
   // 32.0 -> "32", 7.5 -> "7.5"
   String _hoursText(double h) =>
       h == h.roundToDouble() ? '${h.toInt()}' : h.toStringAsFixed(1);
@@ -89,11 +100,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _infoRow(Icons.mail_outline, 'Correo', _email),
                   _infoRow(Icons.person_outline, 'Rol', _role),
                   const SizedBox(height: 12),
-                  const SectionHeader(title: 'Mis materias', actionText: 'Editar'),
+                  SectionHeader(
+                    title: 'Mis materias',
+                    actionText: 'Editar',
+                    onAction: () => _open(const EditSubjectsScreen()),
+                  ),
                   const SizedBox(height: 14),
                   _subjectChips(),
                   const SizedBox(height: 26),
-                  const SectionHeader(title: 'Logros', actionText: 'Ver todos'),
+                  // Sin enlace: los logros aún no existen como función.
+                  const SectionHeader(title: 'Logros', actionText: ''),
                   const SizedBox(height: 16),
                   _achievements(),
                   const SizedBox(height: 24),
@@ -199,15 +215,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Positioned(
           right: -6,
           bottom: -6,
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha(230),
-              borderRadius: BorderRadius.circular(11),
+          child: GestureDetector(
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text('La foto de perfil estará disponible próximamente')),
             ),
-            child: const Icon(Icons.photo_camera_outlined,
-                size: 18, color: AppColors.primary),
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(230),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: const Icon(Icons.photo_camera_outlined,
+                  size: 18, color: AppColors.primary),
+            ),
           ),
         ),
       ],
@@ -317,7 +339,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       width: double.infinity,
       height: 54,
       child: TextButton.icon(
-        onPressed: () {},
+        onPressed: () => _open(const EditProfileScreen()),
         style: TextButton.styleFrom(
           backgroundColor: AppColors.primarySoft,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),

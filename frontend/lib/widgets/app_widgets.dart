@@ -126,14 +126,50 @@ class SectionHeader extends StatelessWidget {
           title,
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
         ),
-        GestureDetector(
-          onTap: onAction,
-          child: Text(
-            actionText,
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w700,
+        // Sin acción no se muestra el enlace (antes quedaba un texto que no hacía nada).
+        if (onAction != null)
+          GestureDetector(
+            onTap: onAction,
+            child: Text(
+              actionText,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Encabezado de las pantallas secundarias: flecha atrás + título + subtítulo.
+class ScreenHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const ScreenHeader({super.key, required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 26, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 2),
+              Text(subtitle,
+                  style: const TextStyle(color: AppColors.textLight)),
+            ],
           ),
         ),
       ],

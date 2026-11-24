@@ -4,6 +4,7 @@ import '../services/api_client.dart';
 import '../services/app_services.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_widgets.dart';
+import 'forgot_password_screen.dart';
 
 // ============================================================
 // PANTALLA 1: INICIAR SESIÓN
@@ -88,11 +89,13 @@ class _LoginFormState extends State<LoginForm> {
           obscure: true,
         ),
 
-        // Enlace "¿Olvidaste tu contraseña?" (pendiente: la API aún no lo incluye)
+        // Enlace "¿Olvidaste tu contraseña?": código por correo + contraseña nueva
         Align(
           alignment: Alignment.centerRight,
           child: GestureDetector(
-            onTap: () {},
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => ForgotPasswordScreen(
+                    initialEmail: _emailController.text.trim()))),
             child: const Text(
               '¿Olvidaste tu contraseña?',
               style: TextStyle(

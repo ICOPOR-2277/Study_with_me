@@ -45,6 +45,9 @@ class Settings:
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from: str = ""
+    # Cuenta de administrador creada/asegurada al arrancar (opcional; ver admin_service.ensure_admin).
+    admin_email: str = ""
+    admin_password: str = ""
 
     @property
     def is_production(self) -> bool:
@@ -80,6 +83,8 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         verification_code_ttl_minutes=int(e.get("VERIFICATION_CODE_TTL_MINUTES", "10")),
         verification_max_attempts=int(e.get("VERIFICATION_MAX_ATTEMPTS", "5")),
         verification_resend_seconds=int(e.get("VERIFICATION_RESEND_SECONDS", "48")),
+        admin_email=e.get("ADMIN_EMAIL", "").strip().lower(),
+        admin_password=e.get("ADMIN_PASSWORD", ""),
         resend_api_key=e.get("RESEND_API_KEY", "").strip(),
         resend_from=e.get("RESEND_FROM", "").strip(),
         smtp_host=e.get("SMTP_HOST", ""),

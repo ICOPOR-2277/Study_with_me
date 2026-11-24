@@ -4,6 +4,10 @@ import '../services/app_services.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_widgets.dart';
 import 'auth_screen.dart';
+import 'availability_screen.dart';
+import 'change_password_screen.dart';
+import 'edit_profile_screen.dart';
+import 'edit_subjects_screen.dart';
 
 // ============================================================
 // PANTALLA 7: AJUSTES
@@ -17,7 +21,38 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notifications = true; // interruptor de notificaciones
+  void _open(Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  }
+
+  void _soon(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  // Qué datos guarda la aplicación (según la base de datos del proyecto).
+  void _showPrivacy() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Privacidad'),
+        content: const SingleChildScrollView(
+          child: Text(
+            'Study With Me guarda: tu nombre, username, correo y rol; tu contraseña '
+            'protegida (nunca en texto plano); tus materias, intereses y disponibilidad; '
+            'las reuniones que creas, a las que te unes o que guardas; y los pagos simulados '
+            '(solo el monto: no hay cobros reales ni se guardan datos de tarjeta).\n\n'
+            'Los códigos de verificación se guardan protegidos (no en claro) y vencen a los 10 minutos. '
+            'Otras personas solo ven tu nombre como anfitrión de una reunión; tu correo no se muestra.',
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Entendido')),
+        ],
+      ),
+    );
+  }
 
   // Cerrar sesión: volvemos al login y borramos el historial de pantallas.
   void _logout() {
@@ -42,40 +77,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _SettingsTile(
               icon: Icons.edit_outlined,
               title: 'Editar perfil',
-              subtitle: 'Nombre, foto y username',
-              onTap: () {},
+              subtitle: 'Nombre y username',
+              onTap: () => _open(const EditProfileScreen()),
             ),
             _SettingsTile(
               icon: Icons.lock_outline,
               title: 'Cambiar contraseña',
               subtitle: 'Actualiza tu acceso',
-              onTap: () {},
+              onTap: () => _open(const ChangePasswordScreen()),
+            ),
+            _SettingsTile(
+              icon: Icons.menu_book_outlined,
+              title: 'Mis materias',
+              subtitle: 'Lo que dominas y lo que quieres aprender',
+              onTap: () => _open(const EditSubjectsScreen()),
+            ),
+            _SettingsTile(
+              icon: Icons.event_available_outlined,
+              title: 'Disponibilidad',
+              subtitle: 'Cuándo puedes estudiar',
+              onTap: () => _open(const AvailabilityScreen()),
             ),
 
             _sectionLabel('PREFERENCIAS'),
             _SettingsTile(
               icon: Icons.notifications_none,
               title: 'Notificaciones',
-              subtitle: 'Recordatorios y novedades',
-              // En lugar de flecha, mostramos un interruptor
-              trailing: Switch(
-                value: _notifications,
-                activeColor: Colors.white,
-                activeTrackColor: AppColors.primary,
-                onChanged: (v) => setState(() => _notifications = v),
-              ),
+              subtitle: 'Próximamente',
+              // Aún no existen notificaciones: el interruptor queda desactivado.
+              trailing: const Switch(value: false, onChanged: null),
+              onTap: () => _soon('Las notificaciones estarán disponibles próximamente'),
             ),
             _SettingsTile(
               icon: Icons.wb_sunny_outlined,
               title: 'Apariencia',
-              subtitle: 'Claro · Predeterminado',
-              onTap: () {},
+              subtitle: 'Claro · Modo oscuro próximamente',
+              onTap: () => _soon('El modo oscuro estará disponible próximamente'),
             ),
             _SettingsTile(
               icon: Icons.shield_outlined,
               title: 'Privacidad',
-              subtitle: 'Controla tus datos',
-              onTap: () {},
+              subtitle: 'Qué datos guardamos',
+              onTap: _showPrivacy,
             ),
 
             _sectionLabel('SESIÓN'),

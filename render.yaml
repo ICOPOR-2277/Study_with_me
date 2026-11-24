@@ -32,22 +32,26 @@ services:
         sync: false                  # pega aquí la URL de Flutter Web (https://....onrender.com)
       - key: APP_TIMEZONE
         value: America/Bogota
-      - key: SMTP_HOST              
+      # Correo del código de verificación. Render GRATIS bloquea los puertos SMTP (25/465/587),
+      # así que en Render usa Resend (API por HTTPS). Sin RESEND_API_KEY el código solo sale en los logs.
+      - key: RESEND_API_KEY
         sync: false
-      - key: SMTP_PORT
+      - key: RESEND_FROM             # ej.: Study With Me <onboarding@resend.dev> (solo entrega a tu correo de Resend)
         sync: false
-      - key: SMTP_USER
+      # Cuenta de administrador del panel (/panel). Se crea al arrancar si no existe.
+      # Render gratis no tiene shell, por eso se hace con variables. Usa una contraseña larga y única.
+      - key: ADMIN_EMAIL
         sync: false
-      - key: SMTP_PASSWORD
+      - key: ADMIN_PASSWORD
         sync: false
-      - key: SMTP_FROM
+      - key: SMTP_HOST               # opcional; solo funciona en planes de pago de Render
         sync: false
 
   - type: web
     name: study-with-me-web
     runtime: static
     rootDir: frontend
-    buildCommand: ./render-build.sh
+    buildCommand: bash ./render-build.sh   # con bash no depende del permiso de ejecución (en Windows Git no lo guarda)
     staticPublishPath: build/web
     envVars:
       - key: API_BASE_URL

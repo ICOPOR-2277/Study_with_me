@@ -172,7 +172,7 @@ class _RegisterFormState extends State<RegisterForm> {
             Text('Foto de perfil',
                 style: TextStyle(fontWeight: FontWeight.w700)),
             SizedBox(height: 4),
-            Text('Opcional · JPG o PNG',
+            Text('Próximamente',
                 style: TextStyle(color: AppColors.textLight, fontSize: 12)),
           ],
         ),

@@ -354,6 +354,17 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Cancela una reunión que creaste. Devuelve el mensaje de error o null si salió bien.
+  Future<String?> cancelMeeting(Meeting m) async {
+    try {
+      await _api.post('/meetings/${m.id}/cancel');
+      await reloadAll();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
   // ---------- Datos para Inicio ----------
 
   /// Próxima sesión: la primera en la que participo; si no hay, la más cercana de la lista.

@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, time
 
-from sqlalchemy import DateTime, ForeignKey, SmallInteger, String, Text, Time, UniqueConstraint, func, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, SmallInteger, String, Text, Time, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,9 +18,14 @@ class User(Base):
     username: Mapped[str] = mapped_column(Text, unique=True)
     email: Mapped[str] = mapped_column(Text, unique=True)
     password_hash: Mapped[str] = mapped_column(Text)
-    role: Mapped[str] = mapped_column(Text)  # 'student' | 'monitor'
+    role: Mapped[str] = mapped_column(Text)  # 'student' | 'monitor' | 'admin'
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == "admin"
 
     @property
     def is_monitor(self) -> bool:

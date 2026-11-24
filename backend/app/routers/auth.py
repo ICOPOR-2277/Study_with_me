@@ -7,7 +7,8 @@ from app.core.config import Settings
 from app.core.deps import settings_dep
 from app.db.session import get_db
 from app.schemas.common import Message
-from app.schemas.user import LoginIn, RegisterIn, RegisterOut, ResendIn, TokenOut, VerifyEmailIn
+from app.schemas.user import (ForgotPasswordIn, LoginIn, RegisterIn, RegisterOut, ResendIn, ResetPasswordIn, TokenOut,
+                              VerifyEmailIn)
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -34,3 +35,15 @@ def resend_code(data: ResendIn, db: Session = Depends(get_db), settings: Setting
 @router.post("/login", response_model=TokenOut)
 def login(data: LoginIn, db: Session = Depends(get_db), settings: Settings = Depends(settings_dep)):
     return auth_service.login(db, settings, data)
+
+
+@router.post("/forgot-password", response_model=Message)
+def forgot_password(data: ForgotPasswordIn, db: Session = Depends(get_db), settings: Settings = Depends(settings_dep)):
+    auth_service.forgot_password(db, settings, data.email)
+    return Message(message="Si la cuenta existe, enviamos un código para restablecer la contraseña.")
+
+
+@router.post("/reset-password", response_model=Message)
+def reset_password(data: ResetPasswordIn, db: Session = Depends(get_db), settings: Settings = Depends(settings_dep)):
+    auth_service.reset_password(db, settings, data.email, data.code, data.new_password)
+    return Message(message="Contraseña actualizada. Ya puedes iniciar sesión.")

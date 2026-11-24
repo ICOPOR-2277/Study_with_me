@@ -72,6 +72,39 @@ class ResendIn(ApiModel):
         return normalize_email(v)
 
 
+class ForgotPasswordIn(ResendIn):
+    """Pide un código para restablecer la contraseña."""
+
+
+class ResetPasswordIn(ApiModel):
+    email: str
+    code: str = Field(pattern=r"^\d{6}$")
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        return normalize_email(v)
+
+
+class ProfileUpdateIn(ApiModel):
+    full_name: str = Field(min_length=1, max_length=120)
+    username: str
+
+    @field_validator("username")
+    @classmethod
+    def _username(cls, v: str) -> str:
+        v = v.strip().lstrip("@").lower()
+        if not USERNAME_RE.match(v):
+            raise ValueError("El username debe tener 3-30 caracteres: letras, números, '_' o '.'")
+        return v
+
+
+class PasswordChangeIn(ApiModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class SlotIO(ApiModel):
     weekday: int = Field(ge=0, le=6, description="0 = lunes ... 6 = domingo")
     start_time: HHMM

@@ -1,4 +1,4 @@
-﻿# Secretos: NUNCA se suben
+﻿# Secretos: NUNCA se suben. Solo se versiona .env.example
 .env
 *.env
 !.env.example
@@ -9,14 +9,20 @@ venv/
 __pycache__/
 *.pyc
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Flutter
+# Flutter / Dart
 frontend/build/
 frontend/.dart_tool/
 frontend/.flutter-plugins*
 frontend/.packages
+frontend/android/local.properties
+frontend/android/.gradle/
+frontend/*.iml
 
-# Editor y sistema
-.vscode/
+# Editores y sistema
 .idea/
-*.log
+.vscode/
+.DS_Store
+Thumbs.db 

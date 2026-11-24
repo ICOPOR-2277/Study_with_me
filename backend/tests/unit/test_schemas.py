@@ -56,3 +56,16 @@ def test_availability_rejects_inverted_range():
         AvailabilityIn(slots=[{"weekday": 0, "start_time": "18:00", "end_time": "14:00"}])
     with pytest.raises(ValidationError):
         AvailabilityIn(slots=[{"weekday": 7, "start_time": "08:00", "end_time": "09:00"}])
+
+
+def test_profile_and_password_schemas():
+    from app.schemas.user import PasswordChangeIn, ProfileUpdateIn, ResetPasswordIn
+    p = ProfileUpdateIn(full_name=" Ana Gil ", username="@Ana.Gil")
+    assert (p.full_name, p.username) == ("Ana Gil", "ana.gil")
+    with pytest.raises(ValidationError):
+        ProfileUpdateIn(full_name="Ana", username="a b")
+    with pytest.raises(ValidationError):
+        PasswordChangeIn(current_password="x", new_password="corta")
+    with pytest.raises(ValidationError):
+        ResetPasswordIn(email="a@b.co", code="12345", new_password="12345678")
+    assert ResetPasswordIn(email=" A@B.co", code="123456", new_password="12345678").email == "a@b.co"

@@ -1,133 +1,149 @@
 from __future__ import annotations
 
-import logging
-from datetime import datetime, timedelta, timezone
+from typing import Literal
 
-from sqlalchemy import delete, or_, select, update
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from pydantic import Field, field_validator, model_validator
 
-from app.core import security
-from app.core.config import Settings
-from app.core.errors import AppError, Conflict, Forbidden, TooManyRequests, Unauthorized
-from app.models import EmailVerification, MonitorSubject, User
-from app.schemas.user import LoginIn, RegisterIn, TokenOut
-from app.services import email_service
-from app.services.subject_service import subjects_by_names
-from app.services.user_service import to_user_out
+from app.schemas.common import USERNAME_RE, ApiModel, HHMM, normalize_email
 
-logger = logging.getLogger("study_with_me.auth")
+Role = Literal["student", "monitor"]
+MAX_MONITOR_SUBJECTS = 3
 
 
-def _now() -> datetime:
-    return datetime.now(timezone.utc)
+class RegisterIn(ApiModel):
+    full_name: str = Field(min_length=1, max_length=120)
+    username: str
+    email: str
+    password: str = Field(min_length=8, max_length=128)
+    role: Role
+    subjects: list[str] = Field(default_factory=list)  # solo monitores: "Materias que dominas"
+
+    @field_validator("username")
+    @classmethod
+    def _username(cls, v: str) -> str:
+        v = v.strip().lstrip("@").lower()  # la app muestra '@lauraestudia'; se guarda sin '@'
+        if not USERNAME_RE.match(v):
+            raise ValueError("El username debe tener 3-30 caracteres: letras, números, '_' o '.'")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        return normalize_email(v)
+
+    @model_validator(mode="after")
+    def _subjects_by_role(self) -> "RegisterIn":
+        unique = list(dict.fromkeys(self.subjects))
+        if self.role == "monitor":
+            if not 1 <= len(unique) <= MAX_MONITOR_SUBJECTS:
+                raise ValueError(f"Un monitor debe elegir de 1 a {MAX_MONITOR_SUBJECTS} materias")
+        elif unique:
+            raise ValueError("Solo los monitores eligen materias que dominan")
+        self.subjects = unique
+        return self
 
 
-def _find_user_by_email(db: Session, email: str) -> User | None:
-    return db.scalar(select(User).where(User.email == email))
+class LoginIn(ApiModel):
+    email: str
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        return normalize_email(v)
 
 
-def _issue_code(db: Session, settings: Settings, user: User) -> None:
-    """Invalida los códigos anteriores y crea uno nuevo (el envío ocurre después del commit)."""
-    now = _now()
-    db.execute(update(EmailVerification)
-               .where(EmailVerification.user_id == user.id, EmailVerification.consumed_at.is_(None))
-               .values(consumed_at=now))
-    code = security.generate_verification_code()
-    db.add(EmailVerification(user_id=user.id, code_hash=security.hash_verification_code(code, settings.secret_key),
-                             expires_at=now + timedelta(minutes=settings.verification_code_ttl_minutes)))
-    db.commit()
-    email_service.send_verification_code(settings, user.email, code)
+class VerifyEmailIn(ApiModel):
+    email: str
+    code: str = Field(pattern=r"^\d{6}$")
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        return normalize_email(v)
 
 
-PENDING_ACCOUNT_MAX_AGE = timedelta(hours=24)
+class ResendIn(ApiModel):
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        return normalize_email(v)
 
 
-def _purge_pending(db: Session, email: str, username: str) -> None:
-    """Borra cuentas SIN verificar que estorban: las del mismo correo/username y las de más de 24 h.
-
-    Una cuenta sin verificar nunca pudo iniciar sesión, así que no tiene reuniones ni inscripciones;
-    sus materias y códigos se borran solos (ON DELETE CASCADE en la base de datos).
-    """
-    cutoff = _now() - PENDING_ACCOUNT_MAX_AGE
-    db.execute(delete(User).where(User.email_verified_at.is_(None),
-                                  or_(User.email == email, User.username == username, User.created_at < cutoff))
-               .execution_options(synchronize_session=False))
+class ForgotPasswordIn(ResendIn):
+    """Pide un código para restablecer la contraseña."""
 
 
-def register(db: Session, settings: Settings, data: RegisterIn) -> User:
-    # Solo las cuentas YA verificadas bloquean un correo o username.
-    if db.scalar(select(User.id).where(User.email == data.email, User.email_verified_at.is_not(None))):
-        raise Conflict("Ya existe una cuenta con ese correo", code="email_taken")
-    if db.scalar(select(User.id).where(User.username == data.username, User.email_verified_at.is_not(None))):
-        raise Conflict("Ese username ya está en uso", code="username_taken")
-    subjects = subjects_by_names(db, data.subjects)  # valida nombres antes de crear nada
-    _purge_pending(db, data.email, data.username)  # un registro nuevo reemplaza al pendiente anterior
-    user = User(full_name=data.full_name, username=data.username, email=data.email,
-                password_hash=security.hash_password(data.password), role=data.role)
-    db.add(user)
-    try:
-        db.flush()
-        db.add_all(MonitorSubject(user_id=user.id, subject_id=s.id) for s in subjects)
-        db.flush()
-    except IntegrityError:
-        db.rollback()
-        raise Conflict("El correo o el username ya están registrados", code="duplicate_user")
-    _issue_code(db, settings, user)
-    return user
+class ResetPasswordIn(ApiModel):
+    email: str
+    code: str = Field(pattern=r"^\d{6}$")
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        return normalize_email(v)
 
 
-def resend_code(db: Session, settings: Settings, email: str) -> None:
-    user = _find_user_by_email(db, email)
-    # Misma respuesta exista o no la cuenta, para no revelar qué correos están registrados.
-    if user is None or user.email_verified_at is not None:
-        return
-    last = db.scalar(select(EmailVerification.created_at).where(EmailVerification.user_id == user.id)
-                     .order_by(EmailVerification.created_at.desc()).limit(1))
-    if last and (_now() - last).total_seconds() < settings.verification_resend_seconds:
-        raise TooManyRequests("Espera unos segundos antes de pedir otro código", code="resend_too_soon")
-    _issue_code(db, settings, user)
+class ProfileUpdateIn(ApiModel):
+    full_name: str = Field(min_length=1, max_length=120)
+    username: str
+
+    @field_validator("username")
+    @classmethod
+    def _username(cls, v: str) -> str:
+        v = v.strip().lstrip("@").lower()
+        if not USERNAME_RE.match(v):
+            raise ValueError("El username debe tener 3-30 caracteres: letras, números, '_' o '.'")
+        return v
 
 
-def verify_email(db: Session, settings: Settings, email: str, code: str) -> TokenOut:
-    user = _find_user_by_email(db, email)
-    invalid = AppError("Código incorrecto o vencido", code="invalid_code")
-    if user is None:
-        raise invalid
-    if user.email_verified_at is not None:
-        raise Conflict("Este correo ya está verificado. Inicia sesión.", code="already_verified")
-    ver = db.scalar(select(EmailVerification)
-                    .where(EmailVerification.user_id == user.id, EmailVerification.consumed_at.is_(None))
-                    .order_by(EmailVerification.created_at.desc()).limit(1).with_for_update())
-    if ver is None or ver.expires_at <= _now():
-        raise AppError("El código venció. Solicita uno nuevo.", code="code_expired")
-    if ver.attempts >= settings.verification_max_attempts:
-        raise TooManyRequests("Demasiados intentos. Solicita un código nuevo.", code="too_many_attempts")
-    if not security.verify_verification_code(code, ver.code_hash, settings.secret_key):
-        ver.attempts += 1
-        db.commit()  # el intento fallido debe quedar registrado
-        raise invalid
-    now = _now()
-    ver.consumed_at = now
-    user.email_verified_at = now
-    db.commit()
-    return _token_for(db, settings, user)
+class PasswordChangeIn(ApiModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
 
 
-def login(db: Session, settings: Settings, data: LoginIn) -> TokenOut:
-    user = _find_user_by_email(db, data.email)
-    stored = user.password_hash if user else security.DUMMY_HASH
-    ok = security.verify_password(data.password, stored)
-    if user is None or not ok:
-        raise Unauthorized("Correo o contraseña incorrectos", code="invalid_credentials")
-    if user.email_verified_at is None:
-        raise Forbidden("Debes verificar tu correo antes de entrar", code="email_not_verified")
-    if security.needs_rehash(user.password_hash):
-        user.password_hash = security.hash_password(data.password)
-        db.commit()
-    return _token_for(db, settings, user)
+class SlotIO(ApiModel):
+    weekday: int = Field(ge=0, le=6, description="0 = lunes ... 6 = domingo")
+    start_time: HHMM
+    end_time: HHMM
+
+    @model_validator(mode="after")
+    def _range(self) -> "SlotIO":
+        if self.end_time <= self.start_time:
+            raise ValueError("La hora final debe ser después de la inicial")
+        return self
 
 
-def _token_for(db: Session, settings: Settings, user: User) -> TokenOut:
-    token = security.create_access_token(str(user.id), settings.secret_key, settings.access_token_expire_minutes)
-    return TokenOut(access_token=token, user=to_user_out(db, user))
+class SubjectNamesIn(ApiModel):
+    subjects: list[str] = Field(default_factory=list, max_length=20)
+
+
+class AvailabilityIn(ApiModel):
+    slots: list[SlotIO] = Field(default_factory=list, max_length=60)
+
+
+class UserOut(ApiModel):
+    id: str
+    full_name: str
+    username: str
+    email: str
+    role: Role
+    subjects: list[str]
+    interests: list[str]
+    availability: list[SlotIO]
+
+
+class RegisterOut(ApiModel):
+    email: str
+    message: str
+    verification_required: bool = True
+    resend_seconds: int
+
+
+class TokenOut(ApiModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
